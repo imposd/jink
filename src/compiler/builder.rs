@@ -300,6 +300,9 @@ impl<'ctx> CodeGen<'ctx> {
       Expr::Delete(expr) => {
         println!("Delete: {:?}", expr);
       }
+      Expr::Extern(target, func, params, ret_typ) => {
+        println!("Extern: {:?} {:?} {:?} {:?}", target, func, params, ret_typ)
+      }
       // When we add top level index expressions
       // i.e. hello[0].bye() or hello.bye() or module.property and module.method()
       // Expr::Index(parent, child) => {

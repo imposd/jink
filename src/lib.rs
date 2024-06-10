@@ -53,7 +53,8 @@ pub const KEYWORDS: &[&str] = &[
   "true", "false", "null",
   "fun", "let", "const", "type",
   "cls", "self", "pub",
-  "import", "from", "as"
+  "import", "from", "as",
+  "extern"
 ];
 
 #[derive(Debug, PartialEq, Clone)]
@@ -158,7 +159,10 @@ pub enum Expr {
   /// 
   /// only `from` imports will have multiple aliases, regular imports can only have one
   Module(Vec<Name>, bool, Option<Vec<(Name, Option<Name>)>>),
-  ModuleParsed(Vec<Name>, bool, Option<Vec<(Name, Option<Name>)>>, Vec<Expression>)
+  ModuleParsed(Vec<Name>, bool, Option<Vec<(Name, Option<Name>)>>, Vec<Expression>),
+
+  /// target name; function name; params; return type
+  Extern(Name, Name, Vec<Type>, Option<Type>),
 }
 
 #[derive(Debug, PartialEq, Clone)]

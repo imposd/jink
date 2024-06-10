@@ -102,6 +102,7 @@ impl Parser {
           Expr::WhileLoop(_, _) => {},
           Expr::Public(_) => {},
           Expr::Delete(_) => {},
+          Expr::Extern(_, _, _, _) => {},
           // Expr::Index(_, _) => {}, // Will only be necessary when indexing at top level - module imports and class methods
           _ => {
             return Err(Error::new(
@@ -489,6 +490,9 @@ impl Parser {
     } else if init.unwrap().value.as_ref().unwrap() == "del" {
       return self.parse_delete();
 
+    } else if init.unwrap().value.as_ref().unwrap() == "extern" {
+      return self.parse_extern();
+
     } else if init.unwrap().value.as_ref().unwrap() == "type" {
       self.iter.next();
       return self.parse_type();
@@ -849,7 +853,7 @@ impl Parser {
       }
     }
   
-    Err(Error::new(
+    return Err(Error::new(
       Error::UnexpectedToken,
       Some(init.clone()),
       self.code.lines().nth((init.line - 1) as usize).unwrap(),
@@ -857,6 +861,179 @@ impl Parser {
       init.end_pos,
       "Missing expression after \"del\"".to_string(),
     ))
+  } 
+
+  fn parse_extern(&mut self) -> Result<Expression, Error> {
+    let init = &self.iter.current.as_ref().unwrap().clone();
+
+    self.iter.next(); // Consume "extern"
+
+    self.consume(&[TokenTypes::LParen], false)?;
+    // extern("C") for example
+    let extern_target = &self.iter.current.clone();
+    self.iter.next();
+    self.consume(&[TokenTypes::RParen], false)?;
+
+    // if let Some(token) = &self.iter.current {
+    //   if token.of_type == TokenTypes::LBrace {
+    //     self.consume(&[TokenTypes::LBrace], false)?;
+    //     self.iter.next();
+    //   }      
+    // }
+
+    let token = self.iter.current.as_ref().unwrap().clone();
+    let function_name = match token.value.as_deref() {
+      Some(_) if token.of_type == TokenTypes::Identifier => {
+        let name = token.value.as_ref().unwrap();
+        self.iter.next(); // Consume function name
+        name
+      }
+      _ => return Err(Error::new(
+        Error::UnexpectedToken,
+        Some(init.clone()),
+        self.code.lines().nth((init.line - 1) as usize).unwrap(),
+        init.start_pos,
+        init.end_pos,
+        "Expected function after extern target got".to_string(),
+      )),
+    };
+
+    self.consume(&[TokenTypes::LParen], false)?;
+
+    let mut params: Vec<Type> = Vec::new();
+
+    let mut variadic = false;
+
+    while self.iter.current.is_some() && self.iter.current.as_ref().unwrap().of_type != TokenTypes::RParen {
+      let token = self.iter.current.clone(); 
+      let param_type: Option<String>;
+  
+      if let Some(ref tok) = token {
+        if tok.of_type == TokenTypes::Identifier {
+          param_type = Some(tok.value.as_ref().unwrap().to_string());
+          self.iter.next(); // Consume param type
+        } else if tok.of_type == TokenTypes::Operator && tok.value.as_ref().unwrap() == "..." {
+          if variadic {
+            return Err(Error::new(
+              Error::UnexpectedToken,
+              Some(self.iter.current.as_ref().unwrap().clone()),
+              self.code.lines().nth((self.iter.current.as_ref().unwrap().line - 1) as usize).unwrap(),
+              self.iter.current.as_ref().unwrap().start_pos,
+              self.iter.current.as_ref().unwrap().end_pos,
+              "Variadic parameter '...' must be the last parameter".to_string(),
+            ));
+          } else {
+            variadic = true;
+            param_type = Some(tok.value.as_ref().unwrap().to_string());
+            self.iter.next();
+          }
+        } else {
+          return Err(Error::new(
+            Error::UnexpectedToken,
+            Some(self.iter.current.clone().unwrap()),
+            self.code.lines().nth((self.iter.current.as_ref().unwrap().line - 1) as usize).unwrap(),
+            self.iter.current.as_ref().unwrap().start_pos,
+            self.iter.current.as_ref().unwrap().end_pos,
+            "Expected parameter or variadic".to_string(),
+          ));
+        }
+      } else {
+        return Err(Error::new(
+          Error::UnexpectedToken,
+          Some(self.iter.current.clone().unwrap()),
+          self.code.lines().nth((self.iter.current.as_ref().unwrap().line - 1) as usize).unwrap(),
+          self.iter.current.as_ref().unwrap().start_pos,
+          self.iter.current.as_ref().unwrap().end_pos,
+          "Expected parameter or variadic".to_string(),
+        ));
+      }
+
+      params.push(Type(param_type.unwrap()));
+
+      if let Some(token) = &self.iter.current {
+        if token.of_type == TokenTypes::Comma {
+          if variadic {
+            return Err(Error::new(
+              Error::UnexpectedToken,
+              Some(self.iter.current.clone().unwrap()),
+              self.code.lines().nth((self.iter.current.as_ref().unwrap().line - 1) as usize).unwrap(),
+              self.iter.current.as_ref().unwrap().start_pos,
+              self.iter.current.as_ref().unwrap().end_pos,
+              "Variadic parameter '...' must be the last parameter".to_string(),
+            ));
+          }
+          self.iter.next();
+        } else if token.of_type != TokenTypes::RParen {
+          return Err(Error::new(
+            Error::UnexpectedToken,
+            Some(self.iter.current.clone().unwrap()),
+            self.code.lines().nth((self.iter.current.as_ref().unwrap().line - 1) as usize).unwrap(),
+            self.iter.current.as_ref().unwrap().start_pos,
+            self.iter.current.as_ref().unwrap().end_pos,
+            "Expected ',' or ')' after parameter".to_string(),
+          ));
+        }
+      }
+    }
+
+    self.consume(&[TokenTypes::RParen], false)?;
+
+    if self.iter.current.as_ref().unwrap().of_type == TokenTypes::Operator 
+    && self.iter.current.as_ref().unwrap().value.as_ref().unwrap() == "->" {
+      self.iter.next();
+    }
+
+    let return_type: Option<Type>;
+
+    match &self.iter.current {
+      Some(ref tok) if token.of_type == TokenTypes::Identifier => {
+        return_type = Some(Type(tok.clone().value.unwrap()));
+        self.iter.next();
+      }
+      _ => {
+        return Err(Error::new(
+          Error::UnexpectedToken,
+          Some(self.iter.current.clone().unwrap()),
+          self.code.lines().nth((self.iter.current.as_ref().unwrap().line - 1) as usize).unwrap(),
+          self.iter.current.as_ref().unwrap().start_pos,
+          self.iter.current.as_ref().unwrap().end_pos,
+          "Expected return type after \"->\" got".to_string(),
+        ))
+      }
+    };
+
+    // if let Some(token) = &self.iter.current.clone() {
+    //   if token.of_type == TokenTypes::RBrace {
+    //     self.consume(&[TokenTypes::RBrace], false)?;
+    //     self.iter.next();
+    //   }      
+    // }
+
+    self.consume(&[TokenTypes::Semicolon], false)?;
+
+    if let Some(ret_type) = return_type {
+      let exter = self.get_expr(Expr::Extern(
+      Name(extern_target.clone().unwrap().value.unwrap()),
+      Name(function_name.into()),
+      params,
+      Some(ret_type)),
+      Some(init.line),
+      init.start_pos,
+      Some(init.line));
+      self.add_name(function_name.into(), exter.clone())?;
+      return Ok(exter);
+    } else {
+      let exter = self.get_expr(Expr::Extern(
+      Name(extern_target.clone().unwrap().value.unwrap()),
+      Name(function_name.into()),
+      params,
+      None),
+      Some(init.line),
+      init.start_pos,
+      Some(init.line));
+      self.add_name(function_name.into(), exter.clone())?;
+      return Ok(exter);
+    }
   }
 
   fn parse_assignment(&mut self, typ: Option<&Token>, identifier: Token, indexed: Option<Expression>) -> Result<Expression, Error> {
