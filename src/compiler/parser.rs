@@ -916,10 +916,10 @@ impl Parser {
           if variadic {
             return Err(Error::new(
               Error::UnexpectedToken,
-              Some(self.iter.current.as_ref().unwrap().clone()),
-              self.code.lines().nth((self.iter.current.as_ref().unwrap().line - 1) as usize).unwrap(),
-              self.iter.current.as_ref().unwrap().start_pos,
-              self.iter.current.as_ref().unwrap().end_pos,
+              Some(init.clone()),
+              self.code.lines().nth((init.line - 1) as usize).unwrap(),
+              init.start_pos,
+              init.end_pos,
               "Variadic parameter '...' must be the last parameter".to_string(),
             ));
           } else {
@@ -930,20 +930,20 @@ impl Parser {
         } else {
           return Err(Error::new(
             Error::UnexpectedToken,
-            Some(self.iter.current.clone().unwrap()),
-            self.code.lines().nth((self.iter.current.as_ref().unwrap().line - 1) as usize).unwrap(),
-            self.iter.current.as_ref().unwrap().start_pos,
-            self.iter.current.as_ref().unwrap().end_pos,
+            Some(init.clone()),
+            self.code.lines().nth((init.line - 1) as usize).unwrap(),
+            init.start_pos,
+            init.end_pos,
             "Expected parameter or variadic".to_string(),
           ));
         }
       } else {
         return Err(Error::new(
           Error::UnexpectedToken,
-          Some(self.iter.current.clone().unwrap()),
-          self.code.lines().nth((self.iter.current.as_ref().unwrap().line - 1) as usize).unwrap(),
-          self.iter.current.as_ref().unwrap().start_pos,
-          self.iter.current.as_ref().unwrap().end_pos,
+          Some(init.clone()),
+          self.code.lines().nth((init.line - 1) as usize).unwrap(),
+          init.start_pos,
+          init.end_pos,
           "Expected parameter or variadic".to_string(),
         ));
       }
@@ -956,9 +956,9 @@ impl Parser {
             return Err(Error::new(
               Error::UnexpectedToken,
               Some(self.iter.current.clone().unwrap()),
-              self.code.lines().nth((self.iter.current.as_ref().unwrap().line - 1) as usize).unwrap(),
-              self.iter.current.as_ref().unwrap().start_pos,
-              self.iter.current.as_ref().unwrap().end_pos,
+              self.code.lines().nth((init.line - 1) as usize).unwrap(),
+              init.start_pos,
+              init.end_pos,
               "Variadic parameter '...' must be the last parameter".to_string(),
             ));
           }
@@ -966,10 +966,10 @@ impl Parser {
         } else if token.of_type != TokenTypes::RParen {
           return Err(Error::new(
             Error::UnexpectedToken,
-            Some(self.iter.current.clone().unwrap()),
-            self.code.lines().nth((self.iter.current.as_ref().unwrap().line - 1) as usize).unwrap(),
-            self.iter.current.as_ref().unwrap().start_pos,
-            self.iter.current.as_ref().unwrap().end_pos,
+            Some(init.clone()),
+            self.code.lines().nth((init.line - 1) as usize).unwrap(),
+            init.start_pos,
+            init.end_pos,
             "Expected ',' or ')' after parameter".to_string(),
           ));
         }
@@ -978,9 +978,10 @@ impl Parser {
 
     self.consume(&[TokenTypes::RParen], false)?;
 
-    if self.iter.current.as_ref().unwrap().of_type == TokenTypes::Operator 
-    && self.iter.current.as_ref().unwrap().value.as_ref().unwrap() == "->" {
-      self.iter.next();
+    if let Some(token) = &self.iter.current.clone() {
+      if token.of_type == TokenTypes::Operator && token.value.as_ref().unwrap() == "->" {
+        self.iter.next();
+      }
     }
 
     let return_type: Option<Type>;
@@ -993,10 +994,10 @@ impl Parser {
       _ => {
         return Err(Error::new(
           Error::UnexpectedToken,
-          Some(self.iter.current.clone().unwrap()),
-          self.code.lines().nth((self.iter.current.as_ref().unwrap().line - 1) as usize).unwrap(),
-          self.iter.current.as_ref().unwrap().start_pos,
-          self.iter.current.as_ref().unwrap().end_pos,
+          Some(init.clone()),
+          self.code.lines().nth((init.line - 1) as usize).unwrap(),
+          init.start_pos,
+          init.end_pos,
           "Expected return type after \"->\" got".to_string(),
         ))
       }
