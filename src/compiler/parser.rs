@@ -1010,7 +1010,7 @@ impl Parser {
     //   }      
     // }
 
-    self.consume(&[TokenTypes::Semicolon], false)?;
+    // self.consume(&[TokenTypes::Semicolon], false)?;
 
     if let Some(ret_type) = return_type {
       let exter = self.get_expr(Expr::Extern(
