@@ -297,9 +297,6 @@ impl<'ctx> CodeGen<'ctx> {
       Expr::Public(expr) => {
         block = self.process_top(*expr, main_fn, block)?;
       },
-      Expr::Delete(expr) => {
-        println!("Delete: {:?}", expr);
-      }
       Expr::Extern(target, func, params, ret_typ) => {
         println!("Extern: {:?} {:?} {:?} {:?}", target, func, params, ret_typ)
       }

@@ -101,7 +101,6 @@ impl Parser {
           Expr::ForLoop(_, _, _) => {},
           Expr::WhileLoop(_, _) => {},
           Expr::Public(_) => {},
-          Expr::Delete(_) => {},
           Expr::Extern(_, _, _, _) => {},
           // Expr::Index(_, _) => {}, // Will only be necessary when indexing at top level - module imports and class methods
           _ => {
@@ -487,9 +486,6 @@ impl Parser {
     } else if init.unwrap().value.as_ref().unwrap() == "pub" {
       return self.parse_public();
 
-    } else if init.unwrap().value.as_ref().unwrap() == "del" {
-      return self.parse_delete();
-
     } else if init.unwrap().value.as_ref().unwrap() == "extern" {
       return self.parse_extern();
 
@@ -821,47 +817,6 @@ impl Parser {
       "Missing expression after \"pub\"".to_string()
     ));
   }
-
-  fn parse_delete(&mut self) -> Result<Expression, Error> {
-    let init = self.iter.current.as_ref().unwrap();
-  
-    if let Some(token) = &self.iter.current.clone() {
-      self.iter.next();
-
-      let expression = self.parse_top()?;
-
-      match &expression.expr {
-        Expr::Array(_) | Expr::ArrayIndex(_, _) | Expr::Index(_, _) | 
-        Expr::Literal(Literals::Identifier(Name(_), _)) | Expr::Literal(Literals::Object(_)) | Expr::Literal(Literals::ObjectProperty(_, _)) => {
-          return Ok(self.get_expr(
-            Expr::Delete(Box::new(expression)),
-            Some(token.line),
-            token.start_pos,
-            token.end_pos,
-          ));
-        }
-        _ => {
-          return Err(Error::new(
-            Error::UnexpectedToken,
-            Some(token.clone()),
-            self.code.lines().nth((token.line - 1) as usize).unwrap(),
-            token.start_pos,
-            token.end_pos,
-            "Expected named expression after \"del\"".to_string(),
-          ));
-        }
-      }
-    }
-  
-    return Err(Error::new(
-      Error::UnexpectedToken,
-      Some(init.clone()),
-      self.code.lines().nth((init.line - 1) as usize).unwrap(),
-      init.start_pos,
-      init.end_pos,
-      "Missing expression after \"del\"".to_string(),
-    ))
-  } 
 
   fn parse_extern(&mut self) -> Result<Expression, Error> {
     let init = &self.iter.current.as_ref().unwrap().clone();
